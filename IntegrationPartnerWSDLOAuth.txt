@@ -1,0 +1,47 @@
+// Method 1- Using Partner WSDL
+String user='cg.training@capg.com';
+String pass='Dtech@2020agc9cTXpVdDYQKcIDXCvayAEs';
+WSDL_partnerSoapSforceCom.Soap call=new WSDL_partnerSoapSforceCom.Soap();
+WSDL_partnerSoapSforceCom.LoginResult logres=call.login(user,pass);
+System.debug(logres);
+
+SoapClassLeadmanage.SessionHeader_element shead=new SoapClassLeadmanage.SessionHeader_element();
+shead.sessionId=logres.sessionId;
+
+SoapClassLeadmanage.LeadManager lm=new SoapClassLeadmanage.LeadManager();
+lm.SessionHeader=shead;
+System.debug(lm.createLead('Doctor','Strange','proXForce'));
+
+// Method 2 Using oAuth
+Http h=new Http();
+HttpRequest hreq=new HttpRequest();
+hreq.setEndpoint('https://login.salesforce.com/services/oauth2/token?grant_type=password&client_id=3MVG9VeAQy5y3BQXC1KCsa7w5PWZpwuAesmyUKf3MfbvNwLCv58axxbH6W8NM_r9MgB8t7mDTEPUaoBEd3tZn&client_secret=AB7CDDF88B6C0B5DE76BAD8C64977FC24951178A2AACBDFC1D855A8A06FE2B45&username=cg.training@capg.com&password=Dtech@2020agc9cTXpVdDYQKcIDXCvayAEs');
+//hreq.setEndpoint('https://login.salesforce.com/services/oauth2/token?grant_type=password');
+String user='cg.training@capg.com';
+String pass='Dtech@2020agc9cTXpVdDYQKcIDXCvayAEs';
+Blob blobval=Blob.valueOf(user+':'+pass);
+//String auth='BASIC'+EncodingUtil.base64Encode(blobval);
+String auth=EncodingUtil.base64Encode(blobval);
+hreq.setHeader('Auth',auth);
+hreq.setMethod('POST');
+HttpResponse hres=h.send(hreq);
+String jsonString=hres.getBody();
+
+JSONParser jp=JSON.createParser(jsonString);
+String sid;
+while(jp.nextToken()!=NULL){
+    if(jp.getCurrentToken()==JSONToken.Field_Name && jp.getText()=='access_token'){
+        jp.nextToken();
+        sid=jp.getText();
+    }else{
+        System.debug('no...');
+    }
+}
+
+
+SoapClassLeadmanage.SessionHeader_element shead=new SoapClassLeadmanage.SessionHeader_element();
+shead.sessionId=sid;
+
+SoapClassLeadmanage.LeadManager lm=new SoapClassLeadmanage.LeadManager();
+lm.SessionHeader=shead;
+System.debug(lm.createLead('Tony','Stark','proXForce'));
