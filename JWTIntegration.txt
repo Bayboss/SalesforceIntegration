@@ -1,0 +1,108 @@
+public class AccountManagerJWTIntegration {
+    private JWTConfiguration config;
+    public AccountManagerJWTIntegration(AccountManagerJWTIntegration.JWTConfiguration config){
+        this.config=config;
+    }
+    
+    public String fetchAccessToken(){
+        Map<String,String> mapReqBody=new Map<String,String>();
+        mapReqBody.put('grant_type', 'urn:ietf:params:oauth:grant-type:jwt-bearer');
+        mapReqBody.put('assertion', fetchJWTToken());
+        Http h=new Http();
+        HttpRequest hreq=new HttpRequest();
+        hreq.setHeader('Content-Type', 'application/x-www-form-urlencoded');
+        hreq.setMethod('POST');
+        hreq.setEndpoint('https://'+config.jwtHostname+'/services/oauth2/token');
+        hreq.setBody(formEncode(mapReqBody));
+        HttpResponse hres=h.send(hreq);
+        String accessToken=fetchFieldValFromResponse(hres.getBody(),'access_token');
+        String InstanceUrl=fetchFieldValFromResponse(hres.getBody(),'instance_url');
+        System.debug('Response Body '+hres.getBody());
+        System.debug('access token '+accessToken);
+        System.debug('InstanceUrl '+InstanceUrl);
+        return accessToken;
+    }
+    
+    public String fetchFieldValFromResponse(String resp,String tokName){
+        JSONParser jp=JSON.createParser(resp);
+        while(jp.nextToken()!=NULL){
+            if(jp.getCurrentToken()==JSONToken.Field_Name && jp.getText()==tokName){
+                jp.nextToken();
+                return jp.getText();
+            }
+		}
+        return 'Not found************';
+    }
+    
+    public String formEncode(Map<String,String> mapReqBody){
+        String res='';
+        for(String key : mapreqBody.keySet()){
+            if(res.length()>0){
+                res=res+'&';
+            }
+            res=res+key+'='+EncodingUtil.urlEncode(mapReqbody.get(key), 'UTF-8');
+        }
+        return res;
+    }
+  
+    
+    public String fetchJWTToken(){
+        //Header hd=new Header('RS256');
+        //String headerJson=JSON.serialize(new Header('RS256'));
+        // Encoding Header
+        String hEncode=base64EncodeUrlSafe(Blob.valueOf(JSON.serialize(new Header('RS256'))));
+        
+        //Encoding Body
+        Body bd=new Body(config.jwtConsumerKey,'https://'+config.jwtHostname,config.jwtUsername,String.valueOf(System.currentTimeMillis()+60*60*100));
+        String bEncode=base64EncodeUrlSafe(Blob.valueOf(JSON.serialize(bd)));
+        
+        //Concatenation header and body
+        String token=hEncode+'.'+bEncode;
+        
+        //Creating Certificate
+        String certificate=base64EncodeUrlSafe(Crypto.signWithCertificate('RSA-SHA256',Blob.valueOf(token), config.jwSignedCertificate));
+        token=token+'.'+certificate;
+        
+        return token;
+    }
+    
+    public String base64EncodeUrlSafe(Blob b){
+        return EncodingUtil.base64Encode(b).replace('+','-').replace('/','_');
+    }
+    
+
+    
+    public class JWTConfiguration{
+        String jwtUsername{get;set;}
+        String jwtHostname{get;set;}
+        String jwtConsumerKey{get;set;}
+        String jwSignedCertificate{get;set;}
+        public JWTConfiguration(String jwtUsername,String jwtHostname,String jwtConsumerKey,String jwSignedCertificate){
+            this.jwtUsername=jwtUsername;
+            this.jwtHostname=jwtHostname;
+            this.jwtConsumerKey=jwtConsumerKey;
+            this.jwSignedCertificate=jwSignedCertificate;
+        }
+    }
+    
+    public class Header{
+        String alg{get;set;}
+        Header(String alg){
+            this.alg=alg;
+        }
+    }
+    
+    public class Body{
+        String iss{get;set;}
+        String aud{get;set;}
+        String sub{get;set;}
+        String exp{get;set;}
+        Body(String iss,String aud,String sub,String exp){
+            this.iss=iss;
+            this.aud=aud;
+            this.sub=sub;
+            this.exp=exp;
+        }
+    }
+
+}
